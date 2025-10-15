@@ -1,52 +1,44 @@
-import express from 'express'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import express from 'express';
+import path from 'path';
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const app = express();
 
-const app = express()
+// Middleware to parse JSON bodies (required for webhook payload)
+app.use(express.json());
 
-// Home route - HTML
+// Optional: Serve static HTML from public folder (keeps template behavior)
 app.get('/', (req, res) => {
-  res.type('html').send(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-        <title>Express on Vercel</title>
-        <link rel="stylesheet" href="/style.css" />
-      </head>
-      <body>
-        <nav>
-          <a href="/">Home</a>
-          <a href="/about">About</a>
-          <a href="/api-data">API Data</a>
-          <a href="/healthz">Health</a>
-        </nav>
-        <h1>Welcome to Express on Vercel 🚀</h1>
-        <p>This is a minimal example without a database or forms.</p>
-        <img src="/logo.png" alt="Logo" width="120" />
-      </body>
-    </html>
-  `)
-})
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
 
-app.get('/about', function (req, res) {
-  res.sendFile(path.join(__dirname, '..', 'components', 'about.htm'))
-})
+// Your ElevenLabs Webhook Endpoint
+app.post('/api/webhook', (req, res) => {
+  const body = req.body;
+  console.log('Webhook received:', JSON.stringify(body, null, 2));
 
-// Example API endpoint - JSON
-app.get('/api-data', (req, res) => {
-  res.json({
-    message: 'Here is some sample API data',
-    items: ['apple', 'banana', 'cherry'],
-  })
-})
+  // Extract the summary from ElevenLabs data collection
+  const summary = body.data?.analysis?.data_collection_results?.faucet_summary?.value;
 
-// Health check
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
-})
+  if (summary) {
+    console.log('Extracted Summary:', summary);
 
-export default app
+    // TODO: Send SMS via Twilio
+    // Example (uncomment when ready):
+    // const client = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
+    // await client.messages.create({
+    //   body: summary,
+    //   from: process.env.TWILIO_PHONE,
+    //   to: process.env.PLUMBER_PHONE
+    // });
+  }
+
+  // Respond to ElevenLabs
+  res.status(200).json({ received: true });
+});
+
+// Optional: Keep the example API route
+app.get('/api', (req, res) => {
+  res.json({ message: 'Hello from Express + TypeScript!' });
+});
+
+export default app;
